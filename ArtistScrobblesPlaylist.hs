@@ -12,7 +12,7 @@ import Data.Functor.Identity
 apiKey :: String
 apiKey = "835789484db9bf9715aa1fd908be19f9"
 
-data SongPlays =  SongPlays {name :: String, playcount :: String} deriving Show
+data SongPlays =  SongPlays {name :: String, playcount :: Int} deriving Show
 newtype SongList = SongList {list :: [SongPlays] } deriving Show
 
 instance FromJSON SongList where
@@ -25,14 +25,14 @@ instance FromJSON SongPlays where
         parseJSON = withObject "SongPlays" $ \o -> do
           nname <- o .: "name"
           nplaycount  <- o .: "playcount"
-          return $ SongPlays nname nplaycount
+          return $ SongPlays nname (read nplaycount :: Int)
 
-printPlaylist :: Maybe SongList -> IO ()
-printPlaylist Nothing = putStrLn "api request/decoding failed"
-printPlaylist (Just (SongList [])) = putStr ""
-printPlaylist (Just (SongList (sph:spt))) = do
-        putStrLn (sname ++ " - " ++ "Plays:" ++ show splays) 
-        printPlaylist (Just (SongList spt))
+printPlaylist :: String -> Maybe SongList -> IO ()
+printPlaylist artist Nothing = putStrLn ("api request/decoding failed for artist: " ++ artist)
+printPlaylist _ (Just (SongList [])) = putStr ""
+printPlaylist artist (Just (SongList (sph:spt))) = do
+        putStrLn (artist ++ " - " ++ sname ++ " - " ++ "Plays:" ++ show splays) 
+        printPlaylist artist (Just (SongList spt))
                 where SongPlays sname splays = sph
 
 main :: IO ()
@@ -50,14 +50,15 @@ main = do
                                 "&api_key=" ++ apiKey ++ 
                                 "&limit=" ++ limit ++
                                 "&format=json")
-    print ("http://ws.audioscrobbler.com/2.0/?method=artist.gettoptracks" ++ 
-        "&artist=" ++ artist ++
-        "&api_key=" ++ apiKey ++ 
-        "&limit=" ++ limit ++
-        "&format=json")
     let req = reqURL
             -- Note that the following settings will be completely ignored.
               { proxy = Just $ Proxy "localhost" 1234
               }
     response <- httpLbs req man
-    printPlaylist (decode (responseBody response) :: Maybe SongList)
+    printPlaylist artist (decode (responseBody response) :: Maybe SongList)
+
+--     print ("http://ws.audioscrobbler.com/2.0/?method=artist.gettoptracks" ++ 
+--         "&artist=" ++ artist ++
+--         "&api_key=" ++ apiKey ++ 
+--         "&limit=" ++ limit ++
+--         "&format=json")
